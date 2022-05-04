@@ -1,0 +1,20 @@
+# NES specific Makefile
+
+TOPDIR = ../../../..
+
+THIS = nes
+PORT = mos6502
+
+CSRC = __itoa.c _strlen.c crlf.c
+
+ASSRC =	f_ibm_full.s f_ibm_sh.s f_italic.s f_min.s f_spect.s \
+	font.s font_color.s set_data.s set_1bit_data.s color.s mode.s \
+	crt0.s
+
+CRT0 =	crt0.s
+
+include $(TOPDIR)/Makefile.common
+
+AS = $(AS_6500)
+
+include ../../../Makefile.platform
