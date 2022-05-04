@@ -29,7 +29,7 @@ inline void draw_pad(uint8_t n, uint8_t x, uint8_t y) {
 joypads_t joypads;
 
 // absolute Y coordinates of player 1 & 2
-uint8_t player1, player2;
+uint8_t player1, player2, player1_plus_24, player2_plus_24;
 uint16_t player1_score, player2_score;
 
 // player constraints
@@ -114,10 +114,12 @@ void main(void) {
         }
         // check bounce from bats
         if (ballX < (PLAYER1_X + 8)) {
-            if ((ballY > player1) && (ballY < (player1 + 24)) && (spd_ballX < 0)) 
+            player1_plus_24 = player1 + 24;
+            if ((ballY > player1) && (ballY < player1_plus_24) && (spd_ballX < 0)) 
                 spd_ballX = -spd_ballX;
         } else if (ballX > (PLAYER2_X - 8)) {
-            if ((ballY > player2) && (ballY < (player2 + 24)) && (spd_ballX > 0)) 
+            player2_plus_24 = player2 + 24;
+            if ((ballY > player2) && (ballY < player2_plus_24) && (spd_ballX > 0)) 
                 spd_ballX = -spd_ballX;
         }
         // check player1 or 2 wins, update scores, start from center

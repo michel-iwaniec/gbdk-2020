@@ -93,7 +93,8 @@ usage (void)
            "  -s romsize     size of the binary file (default: rom banks * 16384)\n"
            "  -Z             generate GameBoy format binary file\n"
            "  -S             generate Sega Master System format binary file\n"
-           "  -t size        skip size bytes from the beginning of the rom"
+           "  -N             generate Famicom/NES format binary file\n"
+           "  -t size        skip size bytes from the beginning of the rom\n"
 
            "SMS format options (applicable only with -S option):\n"
            "  -xo n          rom size (0xa-0x2)\n"
@@ -149,6 +150,16 @@ struct sms_opt_s
   BYTE rom_size;                  /* Doesn't have to be the real size, needed for checksum */
   BYTE region_code;               /* Region code Japan/Export/International and SMS/GG */
   BYTE version;                   /* Game version */
+};
+
+struct nes_opt_s
+{
+    BYTE mapper;
+    BYTE num_prg_banks;
+    BYTE num_chr_banks;
+    bool vertical_mirroring;
+    bool four_screen;
+    bool battery;
 };
 
 void
@@ -441,6 +452,67 @@ sms_postproc (BYTE * rom, int size, int *real_size, struct sms_opt_s *o)
   rom[header_base + 0xf] = (o->region_code << 4) | o->rom_size;
 }
 
+void
+nes_postproc(BYTE* rom, int size, int* real_size, struct nes_opt_s* o)
+{
+    short header_base = 0x0000;
+    int chk = 0;
+    unsigned long i;
+    //memcpy(&rom[header_base], ines_header, sizeof(ines_header));
+/*
+    // configure amounts of bytes to check
+    switch (o->rom_size)
+    {
+    case 0xa:
+    default:
+        i = 0x1FEF;
+        break;
+    case 0xb:
+        i = 0x3FEF;
+        break;
+    case 0xc:
+        i = 0x7FEF;
+        break;
+    case 0xd:
+        i = 0xBFEF;
+        break;
+    case 0xe:
+        i = 0xFFFF;
+        break;
+    case 0xf:
+        i = 0x1FFFF;
+        break;
+    case 0x0:
+        i = 0x3FFFF;
+        break;
+    case 0x1:
+        i = 0x7FFFF;
+        break;
+    case 0x2:
+        i = 0xFFFFF;
+        break;
+    }
+    // calculate checksum
+    for (; i > 0; --i)
+    {
+        chk += rom[i];
+        // 0x7FF0 - 0x7FFF is skipped
+        if (i == 0x8000)
+            i = 0x7FF0;
+    }
+    // we  skipped index 0
+    chk += rom[0];
+    // little endian
+    rom[header_base + 0xa] = chk & 0xff;
+    rom[header_base + 0xb] = (chk >> 8) & 0xff;
+    // game version
+    rom[header_base + 0xe] &= 0xF0;
+    rom[header_base + 0xe] |= o->version;
+    // rom size
+    rom[header_base + 0xf] = (o->region_code << 4) | o->rom_size;
+*/
+}
+
 int
 rom_autosize_grow(BYTE **rom, int test_size, int *size, struct gb_opt_s *o)
 {
@@ -591,7 +663,7 @@ noi2sym (char *filename)
 }
 
 int
-read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o)
+read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o, int rom_base_offset)
 {
   int record_type;
 
@@ -638,6 +710,8 @@ read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o)
         }
       // add linear address extension
       addr |= extaddr;
+      // Subtract ROM base offset
+      addr -= rom_base_offset;
       // TODO: warn for unreachable banks according to chosen MBC
       if (record_type > 1)
         {
@@ -645,7 +719,7 @@ read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o)
           return 0;
         }
 
-      if (addr + nbytes > *size)
+      if (addr + nbytes > *size || (addr < 0 && nbytes > 0))
         {
           // If auto-size is enabled, grow rom bank size by power of 2 when needed
           if (o->rom_banks_autosize)
@@ -656,6 +730,7 @@ read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o)
           else
             {
               fprintf (stderr, "error: size of the buffer is too small.\n");
+              printf("addr = %d, nbytes = %d, *size = %d\n", addr, nbytes, *size);
               return 0;
             }
         }
@@ -685,6 +760,30 @@ read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o)
   return 1;
 }
 
+void write_ines_header(FILE* fout, struct nes_opt_s* nes_opt)
+{
+  char id_string[] = { 0x4E, 0x45, 0x53, 0x1A };  
+  BYTE flags6 = ((nes_opt->mapper & 0xF) << 4) | 
+                   (nes_opt->four_screen << 3) |
+                   (nes_opt->battery << 1) |
+                   nes_opt->vertical_mirroring;
+  BYTE flags7 = (nes_opt->mapper & 0xF0);
+  BYTE flags8 = 0;
+  BYTE flags9 = 0;
+  BYTE flags10 = 0;
+  BYTE padding[5] = { 0, 0, 0, 0, 0, };
+  // "NES" + end-of-file
+  fwrite(&id_string, sizeof(char), 4, fout);
+  fwrite(&nes_opt->num_prg_banks, sizeof(BYTE), 1, fout);
+  fwrite(&nes_opt->num_chr_banks, sizeof(BYTE), 1, fout);
+  fwrite(&flags6, sizeof(BYTE), 1, fout);
+  fwrite(&flags7, sizeof(BYTE), 1, fout);
+  fwrite(&flags8, sizeof(BYTE), 1, fout);
+  fwrite(&flags9, sizeof(BYTE), 1, fout);
+  fwrite(&flags10, sizeof(BYTE), 1, fout);
+  fwrite(padding, sizeof(BYTE), 5, fout);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -696,6 +795,7 @@ main (int argc, char **argv)
   int ret;
   int gb = 0;
   int sms = 0;
+  int nes = 0;
 
   struct gb_opt_s gb_opt = {.cart_name="",
                             .licensee_str={'0', '0'},
@@ -715,21 +815,33 @@ main (int argc, char **argv)
                               .region_code=7,
                               .version=0 };
 
+  struct nes_opt_s nes_opt = {
+                              .mapper = 2,
+                              .num_prg_banks = 2,
+                              .num_chr_banks = 0,
+                              .vertical_mirroring = 0,
+                              .four_screen = 1,
+                              .battery = 0 };
+
 #if defined(_WIN32)
   setmode (fileno (stdout), O_BINARY);
 #endif
 
   while (*++argv && '-' == argv[0][0] && '\0' != argv[0][1])
     {
+      printf("parsing: %s\n", argv[0]);
       switch (argv[0][1])
         {
         case 's':
+          printf("after case 's' : %s\n", argv[0]);
           if (!*++argv)
             {
               usage ();
               return 1;
             }
+          printf("after if (!*++argv) { ... } : %s\n", argv[0]);
           size = strtoul (*argv, NULL, 0);
+          printf("after size = strtoul (*argv, NULL, 0); : %s\n",  argv[0]);
           break;
 
         case 't':
@@ -878,6 +990,11 @@ main (int argc, char **argv)
           sms = 1;
           break;
 
+        case 'N':
+          /* generate iNES binary file */
+          nes = 1;
+          break;
+
         case 'x':
 
           switch (argv[0][2])
@@ -985,16 +1102,18 @@ main (int argc, char **argv)
         }
     }
 
-  ret = read_ihx (fin, &rom, &size, &real_size, &gb_opt);
+  ret = read_ihx (fin, &rom, &size, &real_size, &gb_opt, nes ? 0x8000 : 0x0000);
 
   fclose (fin);
 
   if (ret)
     {
       if (gb)
-        gb_postproc (rom, size, &real_size, &gb_opt);
+          gb_postproc(rom, size, &real_size, &gb_opt);
       else if (sms)
-        sms_postproc (rom, size, &real_size, &sms_opt);
+          sms_postproc(rom, size, &real_size, &sms_opt);
+      else if (nes)
+          nes_postproc(rom, size, &real_size, &nes_opt);
 
       if (*argv)
         {
@@ -1010,7 +1129,15 @@ main (int argc, char **argv)
         }
 
       int writesize = (pack ? real_size : size) - skipsize;
-      if (writesize > 0) fwrite (rom + skipsize, 1, writesize, fout);
+      if (nes)
+        {
+          write_ines_header(fout, &nes_opt);
+          if (writesize > 0) fwrite(rom + skipsize, 1, writesize, fout);
+        }
+      else
+        {
+          if (writesize > 0) fwrite(rom + skipsize, 1, writesize, fout);
+        }
 
       fclose (fout);
 
