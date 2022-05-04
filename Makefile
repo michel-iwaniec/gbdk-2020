@@ -10,8 +10,8 @@ PKG = gbdk
 # Version, used for tarballs & docs
 VER = 4.0.6
 
-PORTS=sm83 z80
-PLATFORMS=gb ap duck gg sms msxdos
+PORTS=sm83 z80 mos6502
+PLATFORMS=gb ap duck gg sms msxdos nes
 
 # Prefix to add to the standard tools.  Usefull for a standard gcc
 # cross-compile.
@@ -147,6 +147,8 @@ endif
 	@$(MAKE) -C $(GBDKSUPPORTDIR)/gbcompress TOOLSPREFIX=$(TOOLSPREFIX) TARGETDIR=$(TARGETDIR)/ --no-print-directory
 	@echo Building makecom
 	@$(MAKE) -C $(GBDKSUPPORTDIR)/makecom TOOLSPREFIX=$(TOOLSPREFIX) TARGETDIR=$(TARGETDIR)/ --no-print-directory
+	@echo Building makebin
+	@$(MAKE) -C $(GBDKSUPPORTDIR)/makebin TOOLSPREFIX=$(TOOLSPREFIX) TARGETDIR=$(TARGETDIR)/ --no-print-directory
 	@echo
 
 gbdk-support-install: gbdk-support-build $(BUILDDIR)/bin
@@ -172,6 +174,9 @@ gbdk-support-install: gbdk-support-build $(BUILDDIR)/bin
 	@echo Installing makecom
 	@cp $(GBDKSUPPORTDIR)/makecom/makecom$(EXEEXTENSION) $(BUILDDIR)/bin/makecom$(EXEEXTENSION)
 	@$(TARGETSTRIP) $(BUILDDIR)/bin/makecom$(EXEEXTENSION)
+	@echo Installing makebin
+	@cp $(GBDKSUPPORTDIR)/makebin/makebin$(EXEEXTENSION) $(BUILDDIR)/bin/makebin$(EXEEXTENSION)
+	@$(TARGETSTRIP) $(BUILDDIR)/bin/makebin$(EXEEXTENSION)
 	@echo
 
 gbdk-support-clean:
@@ -222,6 +227,7 @@ gbdk-lib-install-platforms:
 		echo Installing lib for platform: $$plat; \
 		mkdir -p $(BUILDDIR)/lib/small/asxxxx/$$plat; \
 		cp $(GBDKLIBDIR)/build/small/asxxxx/$$plat/crt0.o $(BUILDDIR)/lib/small/asxxxx/$$plat/crt0.o; \
+		cp $(GBDKLIBDIR)/build/small/asxxxx/$$plat/crt0.lst $(BUILDDIR)/lib/small/asxxxx/$$plat/crt0.lst; \
 		cp $(GBDKLIBDIR)/build/small/asxxxx/$$plat/$$plat.lib $(BUILDDIR)/lib/small/asxxxx/$$plat/$$plat.lib; \
 		for port in $(PORTS); do \
 			if [ -d "$(GBDKLIBDIR)/libc/targets/$$port/$$plat" ]; then \
@@ -261,7 +267,7 @@ gbdk-dist-examples-clean:
 
 
 # Copy SDDC executable files
-SDCC_BINS = makebin packihx sdar sdasgb sdcc sdcdb sdcpp sdldgb sdnm sdobjcopy sdranlib sz80 sdasz80 sdldz80
+SDCC_BINS = packihx sdar sdasgb sdcc sdcdb sdcpp sdldgb sdnm sdobjcopy sdranlib sz80 sdasz80 sdldz80 sdas6500 sdld
 ifeq ($(OS),Windows_NT)
 MINGW64_RUNTIME = \
 	libgcc_s_seh-1.dll \
