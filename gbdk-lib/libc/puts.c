@@ -2,7 +2,7 @@
 
 extern const char *__crlf;
 
-void puts(const char *s) NONBANKED
+void puts(const char *s) OLDCALL NONBANKED
 {
     while (*s)
         putchar(*s++);
