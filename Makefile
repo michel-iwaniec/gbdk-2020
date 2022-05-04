@@ -10,8 +10,8 @@ PKG = gbdk
 # Version, used for tarballs & docs
 VER = 4.0.6
 
-PORTS=sm83 z80
-PLATFORMS=gb ap duck gg sms msxdos
+PORTS=sm83 z80 mos6502
+PLATFORMS=gb ap duck gg sms msxdos nes
 
 # Prefix to add to the standard tools.  Usefull for a standard gcc
 # cross-compile.
@@ -222,6 +222,7 @@ gbdk-lib-install-platforms:
 		echo Installing lib for platform: $$plat; \
 		mkdir -p $(BUILDDIR)/lib/small/asxxxx/$$plat; \
 		cp $(GBDKLIBDIR)/build/small/asxxxx/$$plat/crt0.o $(BUILDDIR)/lib/small/asxxxx/$$plat/crt0.o; \
+		cp $(GBDKLIBDIR)/build/small/asxxxx/$$plat/crt0.lst $(BUILDDIR)/lib/small/asxxxx/$$plat/crt0.lst; \
 		cp $(GBDKLIBDIR)/build/small/asxxxx/$$plat/$$plat.lib $(BUILDDIR)/lib/small/asxxxx/$$plat/$$plat.lib; \
 		for port in $(PORTS); do \
 			if [ -d "$(GBDKLIBDIR)/libc/targets/$$port/$$plat" ]; then \
@@ -261,7 +262,7 @@ gbdk-dist-examples-clean:
 
 
 # Copy SDDC executable files
-SDCC_BINS = makebin packihx sdar sdasgb sdcc sdcdb sdcpp sdldgb sdnm sdobjcopy sdranlib sz80 sdasz80 sdldz80
+SDCC_BINS = makebin packihx sdar sdasgb sdcc sdcdb sdcpp sdldgb sdnm sdobjcopy sdranlib sz80 sdasz80 sdldz80 smos6502 sdas6500 sdld
 ifeq ($(OS),Windows_NT)
 MINGW64_RUNTIME = \
 	libgcc_s_seh-1.dll \

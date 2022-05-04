@@ -4,8 +4,8 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
   # Triggers the workflow on push or pull request events but only for the develop branch
-  # push:
-  #   branches: [ develop ]
+  push:
+    branches: [ develop-NES-support]
   # pull_request:
   #   branches: [ develop ]
 
@@ -15,14 +15,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-20.04
-            name: Linux-x64
-          - os: macos-10.15
-            name: MacOS-x64
+#          - os: ubuntu-20.04
+#            name: Linux-x64
+#          - os: macos-10.15
+#            name: MacOS-x64
           - os: windows-2019
             name: Windows-x64
-          - os: windows-2019
-            name: Windows-x32
+#          - os: windows-2019
+#            name: Windows-x32
     steps:
 
       # ==== OS Specific Dependencies ====
@@ -62,7 +62,19 @@ jobs:
           # curl -Lo sdcc.zip https://github.com/gbdk-2020/gbdk-2020-sdcc/releases/download/sdcc-12539-patched-gbdk0-4.0.6/sdcc-x86_64-w64-mingw32-20210711-12539--sms-gg-patched_makebin_yN.zip
           # For GBDK-2020 4.1.0
           curl -Lo sdcc.zip https://github.com/gbdk-2020/gbdk-2020-sdcc/releases/download/sdcc-13350-patched-gbdk-4.1.0/sdcc-x86_64-w64-mingw32-20220402-13350--sdldz80-patched-at-12539.zip
+          # Use newer snapshot to side-step weird compiler complaint with reentrant functions for mos6502
+          #curl -Lo sdcc.zip https://sourceforge.net/projects/sdcc/files/snapshot_builds/x86_64-w64-mingw32/sdcc-snapshot-x86_64-w64-mingw32-20220504-13425.zip
           7z x sdcc.zip
+          # Get sdas6500.exe from later snapshot
+          mkdir snapshot_with_as6500
+          cd snapshot_with_as6500
+          #curl -Lo sdcc-snapshot-x86_64-w64-mingw32-20220504-13425.zip https://sourceforge.net/projects/sdcc/files/snapshot_builds/x86_64-w64-mingw32/sdcc-snapshot-x86_64-w64-mingw32-20220504-13425.zip
+          curl -Lo sdcc-snapshot-x86_64-w64-mingw32-20220516-13448.zip https://sourceforge.net/projects/sdcc/files/snapshot_builds/x86_64-w64-mingw32/sdcc-snapshot-x86_64-w64-mingw32-20220516-13448.zip
+          7z x sdcc-snapshot-x86_64-w64-mingw32-20220516-13448.zip
+          cp sdcc/bin/smos6502.exe ../sdcc/bin/
+          cp sdcc/bin/sdas6500.exe ../sdcc/bin/
+          cp sdcc/bin/sdld.exe ../sdcc/bin/
+          cd -
 
       - name: Windows-x32 Depends
         if: matrix.name == 'Windows-x32'
