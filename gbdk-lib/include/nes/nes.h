@@ -39,6 +39,8 @@
 
 typedef uint8_t palette_color_t;
 
+void set_bkg_palette(uint8_t first_palette, uint8_t nb_palettes, palette_color_t *rgb_data) OLDCALL;
+
 /** Joypad bits.
     A logical OR of these is used in the wait_pad and joypad
     functions.  For example, to see if the B button is pressed
@@ -461,6 +463,8 @@ void set_bkg_1bpp_data(uint8_t first_tile, uint8_t nb_tiles, const uint8_t *data
 void set_bkg_tiles(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint8_t *tiles) OLDCALL;
 #define set_tile_map set_bkg_tiles
 
+
+void set_bkg_attributes(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint8_t *attributes) OLDCALL;
 
 extern uint8_t _map_tile_offset;
 

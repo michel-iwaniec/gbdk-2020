@@ -2,6 +2,30 @@
 
 #include "GBDK_2020_logo.h"
 
+#include "rgb_to_nes_macro.h"
+
+extern const palette_color_t hacked_palettes[16] = { 
+    RGB_TO_NES(0x3F),
+    RGB_TO_NES(0x15),
+    RGB_TO_NES(0x03),
+    RGB_TO_NES(0x00),
+//
+    RGB_TO_NES(0x3F),
+    RGB_TO_NES(0x26),
+    RGB_TO_NES(0x39),
+    RGB_TO_NES(0x21),
+//
+    RGB_TO_NES(0x3F),
+    RGB_TO_NES(0x3D),
+    RGB_TO_NES(0x3C),
+    RGB_TO_NES(0x00),
+//
+    RGB_TO_NES(0x3F),
+    RGB_TO_NES(0x26),
+    RGB_TO_NES(0x03),
+    RGB_TO_NES(0x00),
+};
+
 void main() {
     DISPLAY_OFF;
     fill_bkg_rect(0, 0, DEVICE_SCREEN_WIDTH, DEVICE_SCREEN_HEIGHT, 0);
@@ -11,6 +35,9 @@ void main() {
     if (_cpu == CGB_TYPE) {
         set_bkg_palette(BKGF_CGB_PAL0, GBDK_2020_logo_PALETTE_COUNT, GBDK_2020_logo_palettes);
     }
+#elif defined(SYSTEM_NES)
+    //set_bkg_palette(0, GBDK_2020_logo_PALETTE_COUNT, hacked_palettes); //GBDK_2020_logo_palettes);
+    set_bkg_palette(0, GBDK_2020_logo_PALETTE_COUNT, GBDK_2020_logo_palettes);
 #endif
     set_native_tile_data(0, GBDK_2020_logo_TILE_COUNT, GBDK_2020_logo_tiles);
 #if defined(SYSTEM_CGB)
@@ -23,9 +50,15 @@ void main() {
                      GBDK_2020_logo_map_attributes);
         VBK_REG = VBK_TILES;
     }
+#elif defined(SYSTEM_NES)
+        set_bkg_attributes((((DEVICE_SCREEN_WIDTH - (GBDK_2020_logo_WIDTH >> 3)) >> 1) & 0xFC) >> 1, 
+                           (((DEVICE_SCREEN_HEIGHT - (GBDK_2020_logo_HEIGHT >> 3)) >> 1) & 0xFC) >> 1, 
+                           GBDK_2020_logo_MAP_ATTRIBUTES_WIDTH, 
+                           GBDK_2020_logo_MAP_ATTRIBUTES_HEIGHT, 
+                           GBDK_2020_logo_map_attributes);
 #endif
-    set_tile_map((DEVICE_SCREEN_WIDTH - (GBDK_2020_logo_WIDTH >> 3)) >> 1, 
-                 (DEVICE_SCREEN_HEIGHT - (GBDK_2020_logo_HEIGHT >> 3)) >> 1, 
+    set_tile_map(((DEVICE_SCREEN_WIDTH - (GBDK_2020_logo_WIDTH >> 3)) >> 1) & 0xFC, 
+                 ((DEVICE_SCREEN_HEIGHT - (GBDK_2020_logo_HEIGHT >> 3)) >> 1) & 0xFC, 
                  GBDK_2020_logo_WIDTH >> 3, 
                  GBDK_2020_logo_HEIGHT >> 3, 
                  GBDK_2020_logo_map);
