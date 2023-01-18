@@ -24,13 +24,13 @@ LCCFLAGS += -Wl-u  -Wl-j -Wm-yoA -Wm-ya4 -Wb-ext=.rel -Wb-v # MBC + Autobanking 
 LCCFLAGS += -debug # Uncomment to enable debug output
 LCCFLAGS += -v     # Uncomment for lcc verbose output
 
-P2AFLAGS_gb     = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip
-P2AFLAGS_gbc    = -map -use_map_attributes -bpp 2 -max_palettes 8 -pack_mode gb
-P2AFLAGS_pocket = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip
-P2AFLAGS_duck   = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip
-P2AFLAGS_sms    = -map -bpp 4 -max_palettes 2 -pack_mode sms
-P2AFLAGS_gg     = -map -bpp 4 -max_palettes 1 -pack_mode sms -noflip
-P2AFLAGS_nes    = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip -use_nes_attributes
+P2AFLAGS_gb     = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip -keep_palette_order
+P2AFLAGS_gbc    = -map -use_map_attributes -bpp 2 -max_palettes 8 -pack_mode gb -keep_palette_order
+P2AFLAGS_pocket = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip -keep_palette_order
+P2AFLAGS_duck   = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip -keep_palette_order
+P2AFLAGS_sms    = -map -bpp 4 -max_palettes 2 -pack_mode sms -keep_palette_order
+P2AFLAGS_gg     = -map -bpp 4 -max_palettes 1 -pack_mode sms -noflip -keep_palette_order
+P2AFLAGS_nes    = -map -bpp 2 -max_palettes 4 -pack_mode gb -noflip -use_nes_attributes -keep_palette_order
 
 P2AFLAGS = $(P2AFLAGS_$(EXT))
 
