@@ -603,7 +603,7 @@ noi2sym (char *filename)
 }
 
 int
-read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o, int rom_base_offset)
+read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o, int rom_base_offset, bool nes_bank_mapping)
 {
   int record_type;
 
@@ -650,8 +650,33 @@ read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o, 
         }
       // add linear address extension
       addr |= extaddr;
-      // Subtract ROM base offset
-      addr -= rom_base_offset;
+      if(nes_bank_mapping)
+      {
+        // NES bank mapping
+        int bank = addr >> 16;
+        int rom_addr = addr & 0xFFFF;
+        if(rom_addr >= 0xC000)
+        {
+          // Fixed bank. Change to last bank in ROM
+          bank = o->nb_rom_banks - 1;
+          addr = (rom_addr & 0x3FFF) | (bank << 14);
+        }
+        else if(rom_addr >= 0x8000)
+        {
+          // Switchable bank. Use a0..a13 and original bank number 
+          addr = (rom_addr & 0x3FFF) | (bank << 14);
+        }
+        else if(nbytes > 0)
+        {
+          fprintf (stderr, "error: encountered address in non-ROM region 0-7FFF\n");
+          return 0;
+        }
+      }
+      else
+      {
+        // Subtract ROM base offset
+        addr -= rom_base_offset;
+      }
       // TODO: warn for unreachable banks according to chosen MBC
       if (record_type > 1)
         {
@@ -659,7 +684,7 @@ read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o, 
           return 0;
         }
 
-      if (addr + nbytes > *size || (addr < 0 && nbytes > 0))
+      if (nbytes > 0 && (addr + nbytes > *size || (addr < 0 && nbytes > 0)))
         {
           // If auto-size is enabled, grow rom bank size by power of 2 when needed
           if (o->rom_banks_autosize)
@@ -673,7 +698,6 @@ read_ihx (FILE *fin, BYTE **rom, int *size, int *real_size, struct gb_opt_s *o, 
               return 0;
             }
         }
-
       while (nbytes--)
         {
           if (addr < *size)
@@ -757,7 +781,7 @@ main (int argc, char **argv)
 
   struct nes_opt_s nes_opt = {
                               .mapper = 30,
-                              .num_prg_banks = 2,
+                              .num_prg_banks = 8,
                               .num_chr_banks = 0,
                               .vertical_mirroring = 0,
                               .four_screen = 1,
@@ -1048,7 +1072,7 @@ main (int argc, char **argv)
         }
     }
 
-  ret = read_ihx (fin, &rom, &size, &real_size, &gb_opt, nes ? 0x8000 : 0x0000);
+  ret = read_ihx (fin, &rom, &size, &real_size, &gb_opt, 0x0000, nes);
 
   fclose (fin);
 
@@ -1079,7 +1103,10 @@ main (int argc, char **argv)
         }
 
       if (nes)
+      {
+        nes_opt.num_prg_banks = gb_opt.nb_rom_banks;
         write_ines_header(fout, &nes_opt);
+      }
       fwrite (rom, 1, (pack ? real_size : size) - offset, fout);
 
       fclose (fout);
