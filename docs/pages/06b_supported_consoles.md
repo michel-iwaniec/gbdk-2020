@@ -165,6 +165,23 @@ GB/AP/DUCK
 - Screen: 160 x 144
 - Hardware Map: 256 x 256
 
+NES/Famicom
+- Sprites:
+  - 8x8 or 8x16
+  - 256 tiles
+  - tile flipping/mirroring: yes
+  - 64 total, max 8 per line
+  - 4 x 4 color palette (color 0 transparent)
+- Background: 256 tiles
+  - tile flipping/mirroring: no
+  - 4 x 4 color palette. (color 0 same for all sub-palettes)
+- Window "layer": not available
+- Screen: 256 x 240
+- Hardware Map: Depends on mirroring mode
+  - 256 x 240
+  - 512 x 240
+  - 256 x 480
+  - 512 x 480 (requires additional RAM on cartridge)
 
 SMS/GG
 - Sprites:
