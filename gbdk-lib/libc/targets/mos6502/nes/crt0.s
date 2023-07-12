@@ -416,16 +416,16 @@ __crt0_RESET_bankSwitchValue:
     lda #>_shadow_OAM
     sta OAMDMA
     ; Perform initialization of DATA area
-    lda #<s__XINIT
+    lda #<s__INITIALIZER
     sta ___memcpy_PARM_2
-    lda #>s__XINIT
+    lda #>s__INITIALIZER
     sta ___memcpy_PARM_2+1
-    lda #<l__XINIT
+    lda #<l__INITIALIZER
     sta ___memcpy_PARM_3
-    lda #>l__XINIT
+    lda #>l__INITIALIZER
     sta ___memcpy_PARM_3+1
-    lda #<s__DATA
-    ldx #>s__DATA
+    lda #<s__INITIALIZED
+    ldx #>s__INITIALIZED
     jsr ___memcpy
     ; Set bank to first
     lda #0x00
