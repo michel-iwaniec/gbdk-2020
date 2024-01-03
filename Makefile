@@ -251,7 +251,7 @@ gbdk-lib-install-platforms:
 	@for plat in $(PLATFORMS); do \
 		echo Installing lib for platform: $$plat; \
 		mkdir -p $(BUILDDIR)/lib/$$plat; \
-		touch $(BUILDDIR)/lib/$$plat/crt0.lst; \
+		cp $(GBDKLIBDIR)/build/$$plat/crt0.lst $(BUILDDIR)/lib/$$plat/crt0.lst; \
 		cp $(GBDKLIBDIR)/build/$$plat/crt0.o $(BUILDDIR)/lib/$$plat/crt0.o; \
 		cp $(GBDKLIBDIR)/build/$$plat/$$plat.lib $(BUILDDIR)/lib/$$plat/$$plat.lib; \
 		for port in $(PORTS); do \
