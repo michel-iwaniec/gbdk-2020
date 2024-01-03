@@ -42,6 +42,7 @@ _attribute_shadow       = 0x188
         .area _BASE
         ;; Constant data
         .area _LIT
+        .area _RODATA
         ;; Constant data, used to init _DATA
         .area _INITIALIZER
         .area _XINIT
