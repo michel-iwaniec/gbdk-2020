@@ -1,16 +1,12 @@
 # If you move this project you can change the directory
 # to match your GBDK root directory (ex: GBDK_HOME = "C:/GBDK/"
 ifndef GBDK_HOME
-GBDK_HOME = ../../../
+	GBDK_HOME = ../../../
 endif
 
 LCC = $(GBDK_HOME)bin/lcc
 
 # You can set flags for LCC here
-LCCFLAGS += -debug # Enable debug output
-LCCFLAGS += -v     # Enable lcc verbose output
-LCCFLAGS += -Wl-u  # Enable .lst -> .rst address update
-LCCFLAGS += -Wl-w  # Enable wide listing in .map file
 LCCFLAGS += -Wm-yC # GB Color required for Hi Color
 LCCFLAGS += -Wf-MMD -Wf-Wp-MP # Header file dependency output (-MMD) for Makefile use + per-header Phoney rules (-MP)
 LCCFLAGS += -Wl-yt0x19        # MBC5
@@ -27,6 +23,12 @@ HICOLOR_FLAGS = --type=1 -L=1 -R=1 --csource --bank=255
 # Add the object dir as an include dir since that's
 # where the converted png source files will get generated
 LCCFLAGS += -I$(OBJDIR) -I$(SRCDIR)
+
+
+# GBDK_DEBUG = ON
+ifdef GBDK_DEBUG
+	LCCFLAGS += -debug -v
+endif
 
 
 # You can set the name of the .gb ROM file here

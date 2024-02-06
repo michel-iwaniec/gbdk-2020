@@ -4,14 +4,17 @@
 
 # If you move this project you can change the directory 
 # to match your GBDK root directory (ex: GBDK_HOME = "C:/GBDK/"
-GBDK_HOME = ../../../
+ifndef GBDK_HOME
+	GBDK_HOME = ../../../
+endif
 
 LCC = $(GBDK_HOME)bin/lcc 
 
-LCCFLAGS += -debug # Enable debug output
-LCCFLAGS += -v     # Enable lcc verbose output
-LCCFLAGS += -Wl-u  # Enable .lst -> .rst address update
-LCCFLAGS += -Wl-w  # Enable wide listing in .map file
+# GBDK_DEBUG = ON
+ifdef GBDK_DEBUG
+	LCCFLAGS += -debug -v
+endif
+
 
 # You can set the name of the .gb ROM file here
 PROJECTNAME    = Example
@@ -31,5 +34,5 @@ $(BINS):	$(CSOURCES) $(ASMSOURCES)
 	$(LCC) $(LCCFLAGS) -o $@ $(CSOURCES) $(ASMSOURCES)
 
 clean:
-	rm -f *.o *.lst *.map *.gb *.ihx *.sym *.cdb *.adb *.asm
+	rm -f *.o *.lst *.map *.gb *.ihx *.sym *.cdb *.adb *.asm *.noi *.rst
 
