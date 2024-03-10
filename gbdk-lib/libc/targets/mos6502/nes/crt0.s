@@ -399,6 +399,23 @@ __crt0_clearRAM_loop:
     sta 0x0500,x
     sta 0x0600,x
     sta 0x0700,x
+    ; WRAM (4kB lower region)
+    sta 0x6000,x
+    sta 0x6100,x
+    sta 0x6200,x
+    sta 0x6300,x
+    sta 0x6400,x
+    sta 0x6500,x
+    sta 0x6600,x
+    sta 0x6700,x
+    sta 0x6800,x
+    sta 0x6900,x
+    sta 0x6A00,x
+    sta 0x6B00,x
+    sta 0x6C00,x
+    sta 0x6D00,x
+    sta 0x6E00,x
+    sta 0x6F00,x
     inx
     bne __crt0_clearRAM_loop
 .endm

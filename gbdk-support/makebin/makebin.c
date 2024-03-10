@@ -750,8 +750,10 @@ void write_ines_header(FILE* fout, struct nes_opt_s* nes_opt)
   BYTE flags7 = (nes_opt->mapper & 0xF0);
   BYTE flags8 = 0;
   BYTE flags9 = 0;
-  BYTE flags10 = 0;
+  BYTE flags10 = 7; // Set 8kB non-battery-backed PRG-RAM in iNES2 header
+  BYTE flags11 = 9; // Set 32kB non-battery-backed CHR-RAM in iNES2 header
   BYTE padding[5] = { 0, 0, 0, 0, 0, };
+  flags7 |= 0x08; // Set iNES 2.0
   // "NES" + end-of-file
   fwrite(&id_string, sizeof(char), 4, fout);
   fwrite(&nes_opt->num_prg_banks, sizeof(BYTE), 1, fout);
@@ -761,7 +763,8 @@ void write_ines_header(FILE* fout, struct nes_opt_s* nes_opt)
   fwrite(&flags8, sizeof(BYTE), 1, fout);
   fwrite(&flags9, sizeof(BYTE), 1, fout);
   fwrite(&flags10, sizeof(BYTE), 1, fout);
-  fwrite(padding, sizeof(BYTE), 5, fout);
+  fwrite(&flags11, sizeof(BYTE), 1, fout);
+  fwrite(padding, sizeof(BYTE), 4, fout);
 }
 
 int
