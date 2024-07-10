@@ -881,6 +881,15 @@ uint8_t * set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t t) NO_OVERLAY_LOCALS;
 #define set_tile_xy set_bkg_tile_xy
 
 /**
+ * Set single tile t on window layer at x,y
+ * @param x X-coordinate
+ * @param y Y-coordinate
+ * @param t tile index
+ * @return returns the address of tile, so you may use faster set_vram_byte() later
+ */
+uint8_t * set_win_tile_xy(uint8_t x, uint8_t y, uint8_t t);
+
+/**
     Set single attribute data a on background layer at x,y
 
     @param x X-coordinate
@@ -1253,6 +1262,16 @@ void vmemset (void *s, uint8_t c, size_t n) NO_OVERLAY_LOCALS;
 */
 void fill_bkg_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t tile) NO_OVERLAY_LOCALS;
 #define fill_rect fill_bkg_rect
+
+/** Fills a rectangular region of Tile Map entries for the Window layer with tile.
+
+    @param x      X Start position in Window Map tile coordinates. Range 0 - 31
+    @param y      Y Start position in Window Map tile coordinates. Range 0 - 31
+    @param w      Width of area to set in tiles. Range 0 - 31
+    @param h      Height of area to set in tiles. Range 0 - 31
+    @param tile   Fill value
+*/
+void fill_win_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t tile);
 
 /** "Flushes" the updates to the shadow attributes so they are written
     to the transfer buffer, and then written to PPU memory on next vblank.

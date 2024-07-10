@@ -1,8 +1,12 @@
     .include    "global.s"
+    .include    "mapper_macros.s"
 
     .area   GBDKOVR (PAG, OVR)
+    _fill_win_rect_PARM_3::
     _fill_bkg_rect_PARM_3::     .ds 1
+    _fill_win_rect_PARM_4::
     _fill_bkg_rect_PARM_4::     .ds 1
+    _fill_win_rect_PARM_5::
     _fill_bkg_rect_PARM_5::     .ds 1
     .xpos:                      .ds 1
     .ypos:                      .ds 1
@@ -40,7 +44,7 @@ _fill_bkg_rect_horizontalStripes:
     sta *.tmp
     ;
     lda *.tmp+1
-    ora #0x20
+    ora __vram_transfer_ppu_hi_mask
     tax
     lda *.tmp
     jsr .ppu_stripe_begin_horizontal
@@ -76,7 +80,7 @@ _fill_bkg_rect_verticalStripes:
     sta *.tmp
     ;
     lda *.tmp+1
-    ora #0x20
+    ora __vram_transfer_ppu_hi_mask
     tax
     lda *.tmp
     jsr .ppu_stripe_begin_vertical
@@ -90,4 +94,14 @@ _fill_bkg_rect_verticalStripes:
     inc *.xpos
     dey
     bne 1$
+    rts
+
+_fill_win_rect::
+    pha
+    lda #0xA0
+    sta __vram_transfer_ppu_hi_mask
+    pla
+    jsr _fill_bkg_rect
+    lda #0x20
+    sta __vram_transfer_ppu_hi_mask
     rts

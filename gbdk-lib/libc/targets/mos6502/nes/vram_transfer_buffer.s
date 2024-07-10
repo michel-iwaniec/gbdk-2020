@@ -60,6 +60,9 @@ __vram_transfer_buffer_num_cycles_x8::  .ds 1
 __vram_transfer_buffer_pos_w::          .ds 1
 __vram_transfer_buffer_pos_old::        .ds 1
 
+.area _BSS
+__vram_transfer_ppu_hi_mask::           .ds 1
+
 .define __vram_transfer_buffer_temp     "(REGTEMP+6)"
 
 .area   _HOME
@@ -131,9 +134,9 @@ __vram_transfer_buffer_pos_old::        .ds 1
     clc
     adc #VRAM_HDR_SIZEOF
     sta *__vram_transfer_buffer_pos_w
-    ; __vram_transfer_buffer_num_cycles_x8 -= 5 (assumes carry clear)
+    ; __vram_transfer_buffer_num_cycles_x8 -= 6 (assumes carry clear)
     lda *__vram_transfer_buffer_num_cycles_x8
-    sbc #4
+    sbc #5
     sta *__vram_transfer_buffer_num_cycles_x8
     ldy *__vram_transfer_buffer_temp
     rts
@@ -305,9 +308,9 @@ _set_vram_byte::
     adc #VRAM_HDR_SIZEOF+1
     ; store new write pointer
     sta *__vram_transfer_buffer_pos_w
-    ; __vram_transfer_buffer_num_cycles_x8 -= 6 (assumes carry clear)
+    ; __vram_transfer_buffer_num_cycles_x8 -= 7 (assumes carry clear)
     lda *__vram_transfer_buffer_num_cycles_x8
-    sbc #5
+    sbc #6
     sta *__vram_transfer_buffer_num_cycles_x8
     VRAM_BUFFER_UNLOCK
     ; Return PPU address
