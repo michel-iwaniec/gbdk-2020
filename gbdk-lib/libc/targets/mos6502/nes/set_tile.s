@@ -1,6 +1,7 @@
     .include    "global.s"
 
     .area   GBDKOVR (PAG, OVR)
+    _set_win_tile_xy_PARM_3::
     _set_bkg_tile_xy_PARM_3::   .ds 1   ; (shared with _set_vram_byte_PARM_2)
     .bkg_tile_ppu_addr::        .ds 2
 
@@ -29,4 +30,12 @@ _get_bkg_xy_addr::
 
 _set_bkg_tile_xy::
     jsr _get_bkg_xy_addr
+    jmp _set_vram_byte
+
+_set_win_tile_xy::
+    jsr _get_bkg_xy_addr
+    pha
+    lda .identity+0x80,x
+    tax
+    pla
     jmp _set_vram_byte
