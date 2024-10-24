@@ -1,10 +1,115 @@
     .include    "global.s"
 
     .area   _HOME
-    
+
+.ifne GBDK_NES_8X8_ATTRIBUTES
+; 8x8 attributes implementation
 _flush_shadow_attributes::
+.flush_shadow_attributes::
+    lda #0x0F
+    sta *__vram_transfer_ppu_hi_mask
+    ; Rows
+    ; TL
+    lda _attribute_row_dirty_planes+0
+    beq 1$
+    sta *_attribute_row_dirty
+    lda #(CFG_CHR_A14)
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x00)
     jsr _flush_shadow_attributes_rows
-    jmp _flush_shadow_attributes_columns
+1$:
+    ; TR
+    lda _attribute_row_dirty_planes+1
+    beq 2$
+    sta *_attribute_row_dirty
+    lda #(CFG_CHR_A14 | CFG_CHR_A12)
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x40)
+    jsr _flush_shadow_attributes_rows
+2$:
+    ; BL
+    lda _attribute_row_dirty_planes+2
+    beq 3$
+    sta *_attribute_row_dirty
+    lda #(CFG_CHR_A14 | CFG_CHR_A13)
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x00+0x80)
+    jsr _flush_shadow_attributes_rows
+3$:
+    ; BR
+    lda _attribute_row_dirty_planes+3
+    beq 4$
+    sta *_attribute_row_dirty
+    lda #(CFG_CHR_A14 | CFG_CHR_A12 | CFG_CHR_A13)
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x40+0x80)
+    jsr _flush_shadow_attributes_rows
+4$:
+    ; Columns
+    ; TL
+    lda _attribute_column_dirty_planes+0
+    beq 5$
+    sta *_attribute_column_dirty
+    lda #CFG_CHR_A14
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x00)
+    jsr _flush_shadow_attributes_columns
+5$:
+    ; TR
+    lda _attribute_column_dirty_planes+1
+    beq 6$
+    sta *_attribute_column_dirty
+    lda #(CFG_CHR_A14 | CFG_CHR_A12)
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x40)
+    jsr _flush_shadow_attributes_columns
+6$:
+    ; BL
+    lda _attribute_column_dirty_planes+2
+    beq 7$
+    sta *_attribute_column_dirty
+    lda #(CFG_CHR_A14 | CFG_CHR_A13)
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x00+0x80)
+    jsr _flush_shadow_attributes_columns
+7$:
+    ; BR
+    lda _attribute_column_dirty_planes+3
+    beq 8$
+    sta *_attribute_column_dirty
+    lda #(CFG_CHR_A14 | CFG_CHR_A12 | CFG_CHR_A13)
+    sta *__vram_transfer_mapper_bits
+    ldy #(0x40+0x80)
+    jsr _flush_shadow_attributes_columns
+8$:
+    lda #0x00
+    sta *__vram_transfer_mapper_bits
+    sta _attribute_row_dirty_planes+0
+    sta _attribute_row_dirty_planes+1
+    sta _attribute_row_dirty_planes+2
+    sta _attribute_row_dirty_planes+3
+    sta _attribute_column_dirty_planes+0
+    sta _attribute_column_dirty_planes+1
+    sta _attribute_column_dirty_planes+2
+    sta _attribute_column_dirty_planes+3
+    lda #0x20
+    sta *__vram_transfer_ppu_hi_mask
+    rts
+.else
+; Regular 16x16 attributes implementation
+_flush_shadow_attributes::
+.flush_shadow_attributes::
+    lda #0x23
+    sta *__vram_transfer_ppu_hi_mask
+    ldy #0
+    jsr _flush_shadow_attributes_rows
+    ldy #0
+    jsr _flush_shadow_attributes_columns
+    lda #0x20
+    sta *__vram_transfer_ppu_hi_mask
+    rts
+.endif
+
 
 ;
 ; Writes every row of attributes from _shadow_attributes that's been marked
@@ -13,9 +118,8 @@ _flush_shadow_attributes::
 _flush_shadow_attributes_rows:
     lda #<PPU_AT0
     sta *.tmp
-    lda #>PPU_AT0
+    lda *__vram_transfer_ppu_hi_mask
     sta *.tmp+1
-    ldy #0
 _flush_shadow_attributes_row_loop:
     lsr *_attribute_row_dirty
     bcc 1$
@@ -64,9 +168,8 @@ _flush_shadow_attributes_update_row:
 _flush_shadow_attributes_columns:
     lda #<PPU_AT0
     sta *.tmp
-    lda #>PPU_AT0
+    lda *__vram_transfer_ppu_hi_mask
     sta *.tmp+1
-    ldy #0
 _flush_shadow_attributes_columns_loop:
     lsr *_attribute_column_dirty
     bcc 1$

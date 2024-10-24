@@ -98,10 +98,14 @@ _fill_bkg_rect_verticalStripes:
 
 _fill_win_rect::
     pha
-    lda #0xA0
-    sta __vram_transfer_ppu_hi_mask
+    ;lda #0xA0
+    ;sta __vram_transfer_ppu_hi_mask
+    lda #CFG_SWP_SPR_4S
+    sta __vram_transfer_mapper_bits
     pla
     jsr _fill_bkg_rect
-    lda #0x20
-    sta __vram_transfer_ppu_hi_mask
+    ;lda #0x20
+    ;sta __vram_transfer_ppu_hi_mask
+    lda #0x00
+    sta __vram_transfer_mapper_bits
     rts

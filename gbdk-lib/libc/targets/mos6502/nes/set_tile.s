@@ -38,4 +38,9 @@ _set_win_tile_xy::
     lda .identity+0x80,x
     tax
     pla
-    jmp _set_vram_byte
+    ldy #CFG_SWP_SPR_4S
+    sty *__vram_transfer_mapper_bits
+    jsr _set_vram_byte
+    ldy #0x00
+    sty *__vram_transfer_mapper_bits
+    rts

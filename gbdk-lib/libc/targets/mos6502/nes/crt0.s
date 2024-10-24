@@ -11,7 +11,7 @@
 ; OAM CPU page
 _shadow_OAM             = 0x200
 ; Attribute shadow (64 bytes, leaving 56 bytes available for CPU stack)
-_attribute_shadow       = 0x188
+_attribute_shadow       = 0x7F00 ;0x188
 
 .macro WRITE_PALETTE_SHADOW
     lda #>0x3F00
@@ -20,7 +20,7 @@ _attribute_shadow       = 0x188
     sta PPUADDR
     ldx __crt0_paletteShadow
     i = 0
-.rept 8
+.rept 7
     stx PPUDATA
     lda (__crt0_paletteShadow+1+3*i+0)
     sta PPUDATA
@@ -30,6 +30,16 @@ _attribute_shadow       = 0x188
     sta PPUDATA
     i = i + 1
 .endm
+    ; Last sub-palette backdrop should contain textbox-backdrop 
+    i = 7
+    ldx *__textbox_backdrop
+    stx PPUDATA
+    lda (__crt0_paletteShadow+1+3*i+0)
+    sta PPUDATA
+    lda (__crt0_paletteShadow+1+3*i+1)
+    sta PPUDATA
+    lda (__crt0_paletteShadow+1+3*i+2)
+    sta PPUDATA
 .endm
 
        ;; ****************************************
@@ -60,22 +70,31 @@ _attribute_shadow       = 0x188
 
 .area	OSEG (PAG, OVR)
 .area	GBDKOVR (PAG, OVR)
+__add_palette_rewrite_PARM_3::          .ds 1
+__add_palette_rewrite_PARM_4::          .ds 1
+
 .area _ZP (PAG)
 __current_bank::                        .ds 1
 _sys_time::                             .ds 2
+_sys_time_old::                         .ds 1
 _shadow_PPUCTRL::                       .ds 1
 _shadow_PPUMASK::                       .ds 1
-__crt0_spritePageValid:                 .ds 1
+__crt0_spritePageValid::                .ds 1
 __crt0_disableNMI:                      .ds 1
 _bkg_scroll_x::                         .ds 1
 _bkg_scroll_y::                         .ds 1
 _attribute_row_dirty::                  .ds 1
 _attribute_column_dirty::               .ds 1
+_attribute_shadow_offset::              .ds 1
 .crt0_forced_blanking::                 .ds 1
 __SYSTEM::                              .ds 1
 .ldx_mapper_config:                     .ds 1
-.identity_ptr:                          .ds 2
 __vbl_isr_mapper_config:                .ds 1
+__ESI_scanline_counter:                 .ds 1
+__ESI_write_index:                      .ds 1
+__CFG_REG_cache:                        .ds 1
+__textbox_backdrop:                     .ds 1
+__inside_nop_slide:                     .ds 1
 
 .define __crt0_NMITEMP "___SDCC_m6502_ret4"
 
@@ -83,14 +102,23 @@ __vbl_isr_mapper_config:                .ds 1
 __crt0_paletteShadow::                  .ds 25
 __shadow_OAM_base::                     .ds 1
 .mode::                                 .ds 1
-__lcd_isr_PPUCTRL:                      .ds .MAX_LCD_ISR_CALLS
-__lcd_isr_PPUMASK:                      .ds .MAX_LCD_ISR_CALLS
-__lcd_isr_scroll_x:                     .ds .MAX_LCD_ISR_CALLS
-__lcd_isr_scroll_y:                     .ds .MAX_LCD_ISR_CALLS
-__lcd_isr_delay_num_scanlines:          .ds .MAX_LCD_ISR_CALLS
-__lcd_isr_mapper_config:                .ds .MAX_LCD_ISR_CALLS
-__lcd_isr_ppuaddr_lo:                   .ds .MAX_LCD_ISR_CALLS
-__lcd_isr_num_calls:                    .ds 1
+__lcd_isr_PPUCTRL:                      .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_PPUMASK:                      .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_pal_c0:
+__lcd_isr_scroll_x:                     .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_pal_c1:
+__lcd_isr_scroll_y:                     .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_delay_num_scanlines:          .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_pal_c2:
+__lcd_isr_mapper_config:                .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_ppuaddr_lo:                   .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_pal_c3:                       .ds (2*.MAX_DEFERRED_ISR_CALLS)
+__lcd_isr_num_calls:                    .ds 2
+__lcd_isr_buf_length:                   .ds 1
+_attribute_row_dirty_planes::           .ds 4
+_attribute_column_dirty_planes::        .ds 4
+__lcd_isr_read_buf:                     .ds 1
+
 
 .area _CODE
 
@@ -121,10 +149,16 @@ ProcessDrawList_DoOneTransfer:
     sta PPUCTRL                                 ; +4
     pla                                         ; +4
     sta PPUADDR                                 ; +4
-    tay
-    sta [*.identity_ptr],y
+    
+    ;tay
+    ;sta [*.identity_ptr],y
+    
     pla                                         ; +4
     sta PPUADDR                                 ; +4
+
+    pla
+    sta CFG_REG ;0xC000
+
     nop                                         ; +2
     jmp [ProcessDrawList_addr]                  ; +5
     ; Total = 4 + 2 + 2 + 4 + 3 + 6*4 + 2 + 2 + 5 = 48 for each transfer (...+ 8*NumBytesCopied)
@@ -172,6 +206,7 @@ ProcessDrawList:
     jmp ProcessDrawList_DoOneTransfer       ; +3
     ; Total = 2 + 3 + 2 + 3 + 2 + 2 + 3 = 17 fixed-cost entry
 
+.ifeq GBDK_NES_EVERY_SCANLINE_IRQ 
 ;
 ; Delays until specified (non-zero) scanline is reached
 ;
@@ -222,6 +257,8 @@ ProcessDrawList:
     sta *.acc   ; -> 13.666 NTSC cycles / 13.5625 PAL cycles
     rts         ; -> 6 cycles for RTS, 6 cycles for JSR = 12 cycles
 
+.endif
+
 __crt0_NMI_earlyout:
     rti
 __crt0_NMI:
@@ -244,28 +281,58 @@ __crt0_NMI:
     lda #PPUCTRL_SPR_CHR
     sta PPUCTRL
     jsr DoUpdateVRAM  
-    ; Set scroll address
-    lda _bkg_scroll_x
-    sta PPUSCROLL
-    lda _bkg_scroll_y
-    sta PPUSCROLL
-    ; Set mapper bits
+
+.ifne GBDK_NES_EVERY_SCANLINE_IRQ
+    ; Set VADDR to 0x0000 to prevent ESI IRQs, and acknowledge any pending ESI-IRQs
+    bit PPUSTATUS
+    lda #0
+    sta PPUADDR
+    sta PPUADDR
     lda *__vbl_isr_mapper_config
-    tay
-    sta .identity,y
+    sta CFG_REG
+.endif
+
+    ; Select deferred-isr buffer to read from
+    ldy #0
+    lda __lcd_isr_num_calls
+    bit __lcd_isr_read_buf
+    bpl 0$
+    ldy #.MAX_DEFERRED_ISR_CALLS
+    lda __lcd_isr_num_calls+1
+0$:
+    sty *__ESI_write_index
+    sta __lcd_isr_buf_length
+
+    ; Set scroll address
+    lda __lcd_isr_scroll_x,y
+    sta PPUSCROLL
+    lda __lcd_isr_scroll_y,y
+    sta PPUSCROLL
+    lda *0x00
   
-    ; Re-write PPUCTRL (clobbered by vram transfer buffer code)
-    lda *_shadow_PPUCTRL
+    ; Write PPUCTRL and force NMI enabled to avoid deadlock from buggy isr handlers
+    lda __lcd_isr_PPUCTRL,y
+    ;lda *_shadow_PPUCTRL
+    ora #0x80
     sta PPUCTRL
 
-    ; Write shadow_PPUMASK to PPUMASK, in case it was disabled
-    lda *_shadow_PPUMASK
+    ; Write PPUMASK, in case it was disabled
+    lda __lcd_isr_PPUMASK,y
     sta PPUMASK
 
     ; Call fake LCD isr if present (0x60 = RTS means no LCD) and
     lda .jmp_to_LCD_isr
     cmp #0x60
     beq __crt0_NMI_skip
+.ifne GBDK_NES_EVERY_SCANLINE_IRQ
+    ; Setup IRQ for LCD isr
+    inc *__ESI_write_index
+    beq 9$
+    ldx *__vbl_isr_mapper_config
+    jsr SetupNextLCD
+    cli
+9$:
+.else
     ; First delay until end-of-vblank, depending on transfer buffer contents...
     ; (X set to correct delay value by DoUpdateVRAM)
 1$:
@@ -288,7 +355,12 @@ __crt0_NMI:
 2$:
     ; Call the write reg subroutine
     jsr .do_lcd_ppu_reg_writes
+.endif
 __crt0_NMI_skip:
+
+    ;
+    jsr .jmp_to_TIM_isr
+    ;
 
     ; Update frame counter
     lda *_sys_time
@@ -330,9 +402,6 @@ DoUpdateVRAM_drawListValid:
     sta *__vram_transfer_buffer_num_cycles_x8
 DoUpdateVRAM_end:
     rts
-
-__crt0_IRQ:
-    jmp __crt0_IRQ
 
 __crt0_setPalette:
     ; Set background color to 30 (white)
@@ -404,6 +473,19 @@ __crt0_setPalette:
 .endm
 
 .macro CRT0_CLEAR_RAM
+    ; Clear WRAM
+    lda #>0x6000
+    sta *REGTEMP+1
+    lda #<0x6000
+    sta *REGTEMP
+    tay
+__crt0_clearWRAM_loop:
+    sta [*REGTEMP],y
+    iny
+    bne __crt0_clearWRAM_loop
+    inc *REGTEMP+1
+    bpl __crt0_clearWRAM_loop
+    ; Clear console RAM
     ldx #0x00
     txa
 __crt0_clearRAM_loop:
@@ -415,39 +497,19 @@ __crt0_clearRAM_loop:
     sta 0x0500,x
     sta 0x0600,x
     sta 0x0700,x
-    ; WRAM (4kB lower region)
-    sta 0x6000,x
-    sta 0x6100,x
-    sta 0x6200,x
-    sta 0x6300,x
-    sta 0x6400,x
-    sta 0x6500,x
-    sta 0x6600,x
-    sta 0x6700,x
-    sta 0x6800,x
-    sta 0x6900,x
-    sta 0x6A00,x
-    sta 0x6B00,x
-    sta 0x6C00,x
-    sta 0x6D00,x
-    sta 0x6E00,x
-    sta 0x6F00,x
     inx
     bne __crt0_clearRAM_loop
 .endm
 
 __crt0_clearVRAM:
-    lda #0xE0
-    sta *REGTEMP
-__crt0_clearVRAM_mapper_loop:
-    lda *REGTEMP
-    tay
-    sta .identity,y
     lda #0x00
+    tax
+    ldy #0x10
+__crt0_clearVRAM_hi_addr_A:
     sta PPUADDR
     lda #0x00
     sta PPUADDR
-    ldy #64
+    txa
     ldx #0
 __crt0_clearVRAM_loop:
     sta PPUDATA
@@ -455,41 +517,39 @@ __crt0_clearVRAM_loop:
     bne __crt0_clearVRAM_loop
     dey
     bne __crt0_clearVRAM_loop
-    lda *REGTEMP
-    sec
-    sbc #0x20
-    sta *REGTEMP
-    bcs __crt0_clearVRAM_mapper_loop
     rts
+
+.ifne GBDK_NES_EVERY_SCANLINE_IRQ
+__crt0_clearAT:
+    ldy #7
+1$:
+    sty CFG_REG
+    tya
+    pha
+    lda #0x0F
+    ldy #1
+    ldx #0xFF
+    jsr __crt0_clearVRAM_hi_addr_A 
+    pla
+    tay
+    dey
+    bpl 1$
+    lda #0
+    sta CFG_REG
+    rts
+.endif
 
 .wait_vbl_done::
 _wait_vbl_done::
 _vsync::
 
     .define .lcd_scanline_previous "REGTEMP"
+    .define .lcd_num_calls "REGTEMP+1"
+    .define .lcd_buf_end "REGTEMP+2"
+
     jsr _flush_shadow_attributes
-    jsr .jmp_to_VBL_isr
-
-    ; Set initial scanline value
-    lda #0xFF
-    sta *.lcd_scanline_previous
-    ;
-    ldy #0
-    sty __lcd_isr_num_calls
-    ; Special-case: LCD at scanline 0 should just directly replace VBL shadow_ values
-    lda *__lcd_scanline
-    bne 0$
-    jsr .jmp_to_LCD_isr
-    lda #0xFF
-    sta *.lcd_scanline_previous
-0$:
-    lda *__current_bank
-    sta *__vbl_isr_mapper_config
-
-    ; disable NMI, as we are saving and restoring shadow registers that it may use
-    sec
-    ror *__crt0_disableNMI
-    ; Save shadow registers that LCD isr could change
+    
+    ; Save shadow registers that VBL or LCD isr could change
     lda *_shadow_PPUMASK
     pha
     lda *_shadow_PPUCTRL
@@ -498,8 +558,44 @@ _vsync::
     pha
     lda *_bkg_scroll_y
     pha
-    lda *__current_bank
+    lda *__vram_transfer_mapper_bits
     pha
+    
+    ; Allow VBL isr to modify shadow registers if present
+    jsr .jmp_to_VBL_isr
+
+    ; Set initial scanline value
+    lda #0xFF
+    sta *.lcd_scanline_previous
+    ;
+
+    ldy #0
+    lda #.MAX_DEFERRED_ISR_CALLS
+    bit __lcd_isr_read_buf
+    bmi 8$
+    ldy #.MAX_DEFERRED_ISR_CALLS
+    lda #(2*.MAX_DEFERRED_ISR_CALLS)
+8$:
+    sty *.lcd_num_calls
+    sta *.lcd_buf_end
+
+    ; Special-case: LCD at scanline 0 should just directly replace first entry
+    lda *__lcd_scanline
+    bne 0$
+    jsr .jmp_to_LCD_isr
+    lda #0xFF
+    sta *.lcd_scanline_previous
+0$:
+
+    ; Write shadow registers as first LCD entry (VBL and LCD at scanline 0 are equal)
+    ldy *.lcd_num_calls
+    jsr .write_shadow_registers_to_buffer
+    iny
+    sty *.lcd_num_calls
+
+    lda *__vram_transfer_mapper_bits
+    sta *__vbl_isr_mapper_config
+
     lda *.lcd_scanline_previous
 
     jmp 2$
@@ -514,7 +610,7 @@ _vsync::
     bcs _wait_vbl_done_waitForNextFrame
 3$:
     ;
-    ldy __lcd_isr_num_calls
+    ldy *.lcd_num_calls
     lda *__lcd_scanline
     ; We are done if next LCD scanline >= SCREENHEIGHT
     cmp #.SCREENHEIGHT
@@ -529,8 +625,62 @@ _vsync::
     sta *_bkg_scroll_y
     ; Call LCD isr
     jsr .jmp_to_LCD_isr
+    jsr .write_shadow_registers_to_buffer
+       
+    iny
+    sty *.lcd_num_calls
+    cpy *.lcd_buf_end
+    bne 1$
+    
+    ; Clear last-scanline-value from stack
+    pla
+
+_wait_vbl_done_waitForNextFrame:
+    lda *.lcd_num_calls
+    ldy #0
+    bit __lcd_isr_read_buf
+    bmi 10$
+    iny
+10$:
+    sta __lcd_isr_num_calls,y
+    
+    ; Flip read buf atomically
+    lda __lcd_isr_read_buf
+    eor #0x80
+    sta __lcd_isr_read_buf
+    ; Enable OAM DMA in next NMI
+    sec
+    ror *__crt0_spritePageValid
+    ; Restore shadow registers
+    pla
+    sta *__vram_transfer_mapper_bits
+    pla
+    sta *_bkg_scroll_y
+    pla
+    sta *_bkg_scroll_x
+    pla
+    sta *_shadow_PPUCTRL
+    pla
+    sta *_shadow_PPUMASK
+
+    lda *_sys_time
+_wait_vbl_done_waitForNextFrame_loop:
+    cmp *_sys_time
+    beq _wait_vbl_done_waitForNextFrame_loop
+
+    ; Disable OAM DMA in next NMI
+    clc
+    ror *__crt0_spritePageValid
+
+    ;
+    lda *_sys_time
+    sta *_sys_time_old
+    ;
+    rts
+
+.write_shadow_registers_to_buffer:
     ; Copy shadow registers
-    ldy __lcd_isr_num_calls
+    ldy *.lcd_num_calls
     lda *_shadow_PPUMASK
     sta __lcd_isr_PPUMASK,y
     lda *_shadow_PPUCTRL
@@ -548,36 +698,8 @@ _vsync::
     asl
     ora __lcd_isr_ppuaddr_lo,y
     sta __lcd_isr_ppuaddr_lo,y
-    lda *__current_bank
-    and #0xE0
+    lda *__vram_transfer_mapper_bits
     sta __lcd_isr_mapper_config,y
-       
-    iny
-    sty __lcd_isr_num_calls
-    cpy #.MAX_LCD_ISR_CALLS
-    bne 1$
-    
-    ; Clear last-scanline-value from stack
-    pla
-
-_wait_vbl_done_waitForNextFrame:
-    ; Restore shadow registers
-    pla
-    sta *__current_bank
-    pla
-    sta *_bkg_scroll_y
-    pla
-    sta *_bkg_scroll_x
-    pla
-    sta *_shadow_PPUCTRL
-    pla
-    sta *_shadow_PPUMASK
-
-    asl *__crt0_disableNMI
-    lda *_sys_time
-_wait_vbl_done_waitForNextFrame_loop:
-    cmp *_sys_time
-    beq _wait_vbl_done_waitForNextFrame_loop
     rts
 
 .display_off::
@@ -611,6 +733,7 @@ __crt0_RESET:
 __crt0_RESET_bankSwitchValue:
     lda #0x00
     sta __crt0_RESET_bankSwitchValue+1
+    sta CFG_REG
     ; Disable NMIs and rendering
     sta PPUCTRL
     sta PPUMASK
@@ -628,6 +751,7 @@ __crt0_RESET_bankSwitchValue:
     sta *__SYSTEM
     ; Clear VRAM
     jsr __crt0_clearVRAM
+    jsr __crt0_clearAT
     ; Hide sprites in shadow OAM, and perform OAM DMA
     ldx #0
     txa
@@ -648,13 +772,6 @@ __crt0_RESET_bankSwitchValue:
     lda #<s__DATA
     ldx #>s__DATA
     jsr ___memcpy
-
-    ; Set *.identity_ptr to .identity
-    lda #<.identity
-    sta *.identity_ptr
-    lda #>.identity
-    sta *.identity_ptr+1
-    
     lda #>0x2000
     sta __vram_transfer_ppu_hi_mask
 
@@ -676,12 +793,21 @@ __crt0_RESET_bankSwitchValue:
     lda #(PPUCTRL_NMI | PPUCTRL_SPR_CHR)
     sta *_shadow_PPUCTRL
     sta PPUCTRL
+    ; Turn off frame IRQ to avoid clashes with every-scanline-IRQ
+    lda #0xC0
+    sta 0x4017
+    ; Enable IRQs
+    cli
     ; Call main
     jsr _main
     ; main finished - loop forever
 __crt0_waitForever:
     jmp __crt0_waitForever
 
+.ifeq GBDK_NES_EVERY_SCANLINE_IRQ
+;
+; Use timed code for LCD ISR PPU register writes
+;
 .do_lcd_ppu_reg_writes:
     .define .reg_write_index    "__crt0_NMITEMP+1"
     .define .lda_PPUADDR        "__crt0_NMITEMP+2"
@@ -697,7 +823,7 @@ __crt0_waitForever:
     nop
 
     ; Skip if empty buffer (no calls were made within frame)
-    lda __lcd_isr_num_calls
+    lda __lcd_isr_buf_length
     beq 2$
 
     ldy #0
@@ -715,16 +841,142 @@ __crt0_waitForever:
     sty PPUADDR
     lda __lcd_isr_scroll_y,y
     sta PPUSCROLL
-    ;and #0xF8
-    ;asl
-    ;asl
-    ;sta *.lda_PPUADDR
     ; A <- PPUADDR (2nd write)
     lda __lcd_isr_ppuaddr_lo,y    ; lda __lcd_isr_scroll_x,y
-    ;lsr
-    ;lsr
-    ;lsr
-    ;ora *.lda_PPUADDR
+    sta *.lda_PPUADDR
+    ; ldx <- mapper_config
+    ldx __lcd_isr_mapper_config,y
+    stx *.ldx_mapper_config
+    ; ldx <- PPUMASK
+    ldx __lcd_isr_PPUMASK,y
+    stx *.ldx_PPUMASK
+    ; X <- SCROLLX
+    ldx __lcd_isr_scroll_x,y
+    ; Y <- PPUCTRL
+    lda __lcd_isr_PPUCTRL,y
+    tay
+    lda *.lda_PPUADDR
+    ;
+    ; Write 4 PPU registers in following order.
+    ;
+    ; 1. PPUSCROLL          (needs to be written to set fine-x)
+    ; 2. PPUADDR 2nd write  (highest priority as needs to happen before the two-tile pre-fetch) 
+    ; 3. PPUCTRL            (PPU pattern table switch can affect two-tile pre-fetch)
+    ; 4. PPUMASK            (emphasis and render on/off are maybe less distracting?)
+    ;
+    ; TODO: Self-modifying code could build a non-redundant write sequence in RAM.
+    ;
+    stx PPUSCROLL
+    sta PPUADDR
+    ;lax *.ldx_mapper_config
+    ;.db 0xA7, <.ldx_mapper_config
+    ;txa
+    sta ;.identity,x
+    lda *.ldx_mapper_config
+    sta CFG_REG
+    ldx *.ldx_PPUMASK
+    stx PPUMASK
+    sty PPUCTRL
+
+    sta __CFG_REG_cache
+
+    ; Delay for 40.666 NTSC cycles / 33.5625 PAL cycles
+    jsr .delay_fractional
+    ldy *.reg_write_index
+    
+    ; Finally, write Y-scroll part of T with original non-LCD shadow values, but 
+    ; *without* triggering an update of V, to mitigate glitches on lag frames.
+    ; In normal circumstances, NMI will re-write T with the new proper Y-scroll 
+    ; value for start of screen. Or the next iteration of this loop may overwrite
+    ; it as well.
+    ; But if our calls to VBL/LCD handlers disable NMI just at the wrong moment in
+    ; the vsync routine, and cause the scroll update in NMI to be skipped, 
+    ; this mitigation will leave T with a "reasonable" value of the old shadow 
+    ; bkg scroll register for Y at scanline 0.
+    ;NOP
+    ;NOP
+    lda *.ldx_mapper_config
+    
+    sty PPUADDR
+    lda *_bkg_scroll_y
+    sta PPUSCROLL
+
+    iny
+    cpy __lcd_isr_buf_length
+    bne 1$
+2$:
+    rts
+
+__crt0_IRQ:
+    jmp __crt0_IRQ
+.else
+;
+; Use every-scanline-IRQ for LCD ISR PPU register writes
+;
+SetupNextLCD:
+    .define .lda_PPUADDR        "__crt0_NMITEMP+2"
+    .define .ldx_PPUMASK        "__crt0_NMITEMP+3"
+    ; Skip if empty buffer (no calls were made within frame)
+    lda __lcd_isr_buf_length
+    beq 3$
+    
+    ldy *__ESI_write_index
+    cpy __lcd_isr_buf_length
+    beq 3$
+    
+    lda __lcd_isr_delay_num_scanlines,y
+    beq 3$
+    sta *__ESI_scanline_counter
+2$:
+    ; At least one more split - enable every-scanline-IRQ
+    txa
+    ora #CFG_IRQ_ENABLE
+    sta __CFG_REG_cache
+    sta CFG_REG
+    rts
+
+3$:
+    ; No more splits - turn off every-scanline-IRQ
+    txa
+    and #~CFG_IRQ_ENABLE
+    sta __CFG_REG_cache
+    sta CFG_REG
+    rts
+
+__crt0_IRQ:
+    dec *__ESI_scanline_counter
+    beq __crt0_IRQ_reached_scanline
+    ; Acknowledge IRQ by writing CFG_REG
+    sta *__crt0_NMITEMP+2
+    lda *__CFG_REG_cache
+    sta CFG_REG
+    lda *__crt0_NMITEMP+2
+    rti
+__crt0_IRQ_reached_scanline:
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    ldy *__ESI_write_index
+    
+    lda __lcd_isr_PPUCTRL,y
+    bpl __crt0_IRQ_is_palette_rewrite
+
+    ldx #4
+1$:
+    dex
+    bne 1$
+    nop
+
+__crt0_IRQ_reached_scanline_write_scroll:
+    ; Pre-write PPUADDR (1st write) and y-scroll
+    sty PPUADDR
+    lda __lcd_isr_scroll_y,y
+    sta PPUSCROLL
+    ; A <- PPUADDR (2nd write)
+    lda __lcd_isr_ppuaddr_lo,y
     sta *.lda_PPUADDR
     ; ldx <- mapper_config
     ldx __lcd_isr_mapper_config,y
@@ -751,45 +1003,203 @@ __crt0_waitForever:
     stx PPUSCROLL
     sta PPUADDR
     sty PPUCTRL
-    ;lax *.ldx_mapper_config
-    .db 0xA7, <.ldx_mapper_config
-    
-    ;txa
-    
-    sta .identity,x
+    lda *.ldx_mapper_config
+    sta CFG_REG
     ldx *.ldx_PPUMASK
     stx PPUMASK
+    tax
 
-    ; Delay for 40.666 NTSC cycles / 33.5625 PAL cycles
-    jsr .delay_fractional
-    ldy *.reg_write_index
+    inc *__ESI_write_index
+    jsr SetupNextLCD
+
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
+
+__crt0_IRQ_is_palette_rewrite:
+    .define .zp         "__crt0_NMITEMP"
+    ; Check if this was the NOP-slide being interrupted
+
+    tax
+    bit *__inside_nop_slide
+    bmi 10$
+    jmp __crt0_IRQ_is_palette_rewrite_setup_NOP_slide
+10$:
+    ;txa
+    and #0x3F
+    ora #0x80
+
+    lsr *__inside_nop_slide
+
+    sta *.zp
+    ora #0x04
+    sta PPUCTRL
+ 
+    ; pop redundant nop-slide return address / flags / pushed-registers from stack
+    tsx
+    txa
+    clc
+    adc #6
+    tax
+    txs
+    ; -> 12 cycles
     
-    ; Finally, write Y-scroll part of T with original non-LCD shadow values, but 
-    ; *without* triggering an update of V, to mitigate glitches on lag frames.
-    ; In normal circumstances, NMI will re-write T with the new proper Y-scroll 
-    ; value for start of screen. Or the next iteration of this loop may overwrite
-    ; it as well.
-    ; But if our calls to VBL/LCD handlers disable NMI just at the wrong moment in
-    ; the vsync routine, and cause the scroll update in NMI to be skipped, 
-    ; this mitigation will leave T with a "reasonable" value of the old shadow 
-    ; bkg scroll register for Y at scanline 0.
-    NOP
-    NOP
-    lda *.ldx_mapper_config
-    
+    bit *__SYSTEM
+    bvs 3$
+    nop ; NTSC fractional cycle count
+    nop
+    nop
+    nop
+    NOP ; Extra NOP - seems to be needed for added timing
+3$:             ; -> 15 NTSC cycles / 6 PAL cycles
+
+    lda *.zp ; timing
+    nop 
+
+    ; --- Wait for next hblank
+    ; ...
+
+    ldx __lcd_isr_pal_c0,y
+    ldy #0x3F
     sty PPUADDR
-    lda *_bkg_scroll_y
-    sta PPUSCROLL
 
+    lda #0x00
+    ldy #0x3F
+    sta PPUADDR
+
+    sty PPUADDR
+    ldy #0xFC
+    lda #0x10
+    sta PPUMASK
+    lda #0x00
+
+    sta PPUMASK
+    stx PPUDATA     ; write BG0
+
+    ; Delay over next scanline to reach next hblank, while PPU outputs BG0
+    ; ...
+        
+    sty PPUADDR
+    
+    lda *.zp
+    sta PPUCTRL
+
+    ; Set VADDR to third sub-palette at 3F0C
+    lda #>0x3F0C
+    sta PPUADDR
+    lda #0xFF
+    sta PPUSCROLL
+    lda #0xE0
+    sta PPUSCROLL
+    lda #<0x3F0C
+    sta PPUADDR
+
+    NOP
+    NOP
+    NOP
+
+    bit *__SYSTEM
+    bvs 4$
+    nop
+    nop
+    nop
+    nop
+4$:             ; -> 13 NTSC cycles / 6 PAL cycles
+
+    ldy *__ESI_write_index
+
+    lda __lcd_isr_mapper_config+1,y
+    sta CFG_REG
+
+    ;nop ; tsx
+    stx *.zp+1 ; timing
+    
+    ldx __lcd_isr_PPUMASK+1,y
+    stx *.zp ;timing
+    nop
+
+    lda __lcd_isr_pal_c3,y
+    ldx __lcd_isr_pal_c2,y
+    sta *.zp
+    lda __lcd_isr_pal_c1,y
+    tay
+    lda *.zp
+    ;
+    bit PPUDATA
+    sty PPUDATA
+    stx PPUDATA
+    sta PPUDATA
+    
+    ldx *.zp+1 ; timing
+    
+    ; Finally, wait for another hblank to get enough time to write scroll coordinates
+    NOP
+    bit *__SYSTEM
+    bvs 5$
+    nop
+    nop
+    nop
+    nop
+5$:             ; -> 13 NTSC cycles / 6 PAL cycles
+
+    inc *__ESI_write_index
+    ldy *__ESI_write_index
+    
+    jmp __crt0_IRQ_reached_scanline_write_scroll
+
+__crt0_IRQ_is_palette_rewrite_setup_NOP_slide:
+    ; Set flag to indicate next IRQ has NOP-slide completed
+    nop
+    sec
+    ror *__inside_nop_slide
+    
+    ; First acknowledge IRQ by writing CFG_REG
+    lda *__CFG_REG_cache
+    sta CFG_REG
+    ; Then delay, and finally enter nop-slide
+    lda #1
+    sta *__ESI_scanline_counter
+    cli
+
+    ldx #7
+0$:
+    dex
+    bne 0$
+    nop
+
+    NOP
+    NOP
+    NOP
+    ; If something goes wrong, loop here forever
+1$:
+    jmp 1$
+
+.endif
+
+__add_palette_rewrite::
+    ;.define .lcd_num_calls "REGTEMP+1"
+
+    ldy *.lcd_num_calls
+    sta __lcd_isr_pal_c0,y
+    sta *__textbox_backdrop
+    txa
+    sta __lcd_isr_pal_c1,y
+    lda *__add_palette_rewrite_PARM_3
+    sta __lcd_isr_pal_c2,y
+    lda *__add_palette_rewrite_PARM_4
+    sta __lcd_isr_pal_c3,y
+    lda *_shadow_PPUCTRL ;#0x00
+    and #0x3F
+    sta __lcd_isr_PPUCTRL,y
+    lda *_shadow_PPUMASK
+    sta __lcd_isr_PPUMASK,y
     iny
-    cpy __lcd_isr_num_calls
-    bne 1$
-2$:
-    ; Make sure to preserve bits 5-7 of mapper config for rest of frame
-    lda *__current_bank
-    and #0x1F
-    ora *.ldx_mapper_config
-    sta *__current_bank
+    lda #0
+    sta __lcd_isr_delay_num_scanlines,y
+    sty *.lcd_num_calls
     rts
 
 ; Interrupt / RESET vector table
