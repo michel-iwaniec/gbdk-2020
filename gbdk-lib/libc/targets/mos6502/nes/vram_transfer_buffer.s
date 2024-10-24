@@ -15,11 +15,12 @@
 ; 3: PPUADDR_LO
 ; 4: ...N data bytes...
 ;
-VRAM_HDR_SIZEOF         = 4
+VRAM_HDR_SIZEOF         = 5
 VRAM_HDR_JMPADDR        = 0
 VRAM_HDR_DIRECTION      = 1
 VRAM_HDR_PPUHI          = 2
 VRAM_HDR_PPULO          = 3
+VRAM_HDR_MAPPER         = 4
 VRAM_MAX_BYTES          = 32
 VRAM_MAX_STRIPE_SIZE    = VRAM_HDR_SIZEOF + VRAM_MAX_BYTES
 
@@ -60,7 +61,8 @@ __vram_transfer_buffer_num_cycles_x8::  .ds 1
 __vram_transfer_buffer_pos_w::          .ds 1
 __vram_transfer_buffer_pos_old::        .ds 1
 
-.area _BSS
+;.area _BSS
+__vram_transfer_mapper_bits::           .ds 1
 __vram_transfer_ppu_hi_mask::           .ds 1
 
 .define __vram_transfer_buffer_temp     "(REGTEMP+6)"
@@ -130,6 +132,10 @@ __vram_transfer_ppu_hi_mask::           .ds 1
     sta __vram_transfer_buffer+VRAM_HDR_PPUHI,y
     pla
     sta __vram_transfer_buffer+VRAM_HDR_PPULO,y
+    
+    lda *__vram_transfer_mapper_bits
+    sta __vram_transfer_buffer+VRAM_HDR_MAPPER,y
+    
     tya
     clc
     adc #VRAM_HDR_SIZEOF
@@ -299,6 +305,8 @@ _set_vram_byte::
     sta __vram_transfer_buffer+VRAM_HDR_PPUHI,y
     lda *ppu_addr
     sta __vram_transfer_buffer+VRAM_HDR_PPULO,y
+    lda *__vram_transfer_mapper_bits
+    sta __vram_transfer_buffer+VRAM_HDR_MAPPER,y
     ; write data byte
     lda *_set_vram_byte_PARM_2
     sta __vram_transfer_buffer+VRAM_HDR_SIZEOF,y

@@ -15,10 +15,16 @@
 .define xPos  "___move_metasprite_PARM_2"
 .define yPos  "___move_metasprite_PARM_3"
 
+.define id    ".tmp+1"
+
 ; uint8_t __move_metasprite(uint8_t id, int16_t x, int16_t y)
 
 ___move_metasprite::
-    jsr .move_metasprite_prologue
+    sta *id ;jsr .move_metasprite_prologue
+    asl
+    asl
+    tax
+    ldy #0
 ___move_metasprite_loop:
     lda [*___current_metasprite],y      ; dy
     bmi ___move_metasprite_dyNeg
@@ -27,6 +33,7 @@ ___move_metasprite_loop:
     sta *yPos
     bcc 1$
     inc *yPos+1
+    ;bne ___move_metasprite_outsideY
 1$:
 ___move_metasprite_loop_writePosY:
     sta _shadow_OAM+OAM_POS_Y,x
@@ -40,6 +47,7 @@ ___move_metasprite_loop_writePosY:
     sta *xPos
     bcc 2$
     inc *xPos+1
+    ;bne ___move_metasprite_outsideX
 2$:
 ___move_metasprite_loop_writePosX:
     sta _shadow_OAM+OAM_POS_X,x
@@ -52,16 +60,27 @@ ___move_metasprite_loop_writePosX:
     adc *___current_base_tile
     sta _shadow_OAM+OAM_TILE_INDEX,x
     lda [*___current_metasprite],y      ; props
-    adc *___current_base_prop
+;;; HACK: gbstudio does not use _current_base_prop    
+    ;adc *___current_base_prop
+;;;
     iny
     sta _shadow_OAM+OAM_ATTRIBUTES,x
-    inx
-    inx
-    inx
-    inx
+    ;inx
+    ;inx
+    ;inx
+    ;inx
+    txa
+    .db 0xCB, 0xFC  ; AXS #0xFC
     bne ___move_metasprite_loop
 ___move_metasprite_end:
-    jmp .move_metasprite_epilogue
+    ;jmp .move_metasprite_epilogue
+    ; Return number of hardware sprites used
+    txa
+    lsr
+    lsr
+    sec
+    sbc *id
+    rts
 
 ___move_metasprite_dxNeg:
     clc
@@ -90,8 +109,9 @@ ___move_metasprite_outsideY:
     clc
     adc *xPos
     sta *xPos
-    bcc ___move_metasprite_outsideX
+    bcc 1$
     inc *xPos+1
+1$:
 ___move_metasprite_outsideX:
     iny
     ; Skip tile index / props
