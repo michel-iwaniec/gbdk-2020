@@ -801,7 +801,7 @@ main (int argc, char **argv)
                               .nb_ram_banks=0 };
 
   struct nes_opt_s nes_opt = {
-                              .mapper = 30,
+                              .mapper = 248,
                               .num_prg_banks = 8,
                               .num_chr_banks = 0,
                               .vertical_mirroring = 0,

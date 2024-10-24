@@ -1,9 +1,17 @@
     .include    "global.s"
 
     .area   GBDKOVR (PAG, OVR)
+    .PARM_w:
+    _set_bkg_submap_attributes_PARM_3::
     _set_bkg_submap_attributes_nes16x16_PARM_3::    .ds 1
+    .PARM_h:
+    _set_bkg_submap_attributes_PARM_4::
     _set_bkg_submap_attributes_nes16x16_PARM_4::    .ds 1
+    .PARM_map:
+    _set_bkg_submap_attributes_PARM_5::
     _set_bkg_submap_attributes_nes16x16_PARM_5::    .ds 2
+    .PARM_map_w:
+    _set_bkg_submap_attributes_PARM_6::
     _set_bkg_submap_attributes_nes16x16_PARM_6::    .ds 1
     .xpos:                                          .ds 1
     .ypos:                                          .ds 1
@@ -24,6 +32,9 @@
     adc #1
     and #ATTRIBUTE_PACKED_WIDTH-1
     ora *.row_shl_3
+.ifne GBDK_NES_8X8_ATTRIBUTES
+    ora *_attribute_shadow_offset
+.endif
     tax
 .endm
 
@@ -51,6 +62,9 @@
     clc
     adc #(1 << 3)
     and #0x3F
+.ifne GBDK_NES_8X8_ATTRIBUTES
+    ora *_attribute_shadow_offset
+.endif
     tax
     INC_ROW_SRC
 .endm
@@ -231,6 +245,9 @@ _set_bkg_submap_attributes_verticalStripes_columnLoop:
     sta *.row_shl_3
     lda *.xpos
     ora *.row_shl_3
+.ifne GBDK_NES_8X8_ATTRIBUTES
+    ora *_attribute_shadow_offset
+.endif
     tax
     ldy #0
     bit *.x_odd
@@ -335,6 +352,9 @@ _set_bkg_submap_attributes_verticalStripes_columnLoop:
     sta *.row_shl_3
     lda *.xpos
     ora *.row_shl_3
+.ifne GBDK_NES_8X8_ATTRIBUTES
+    ora *_attribute_shadow_offset
+.endif
     tax
     bit *.y_odd
     bpl 2$
@@ -403,3 +423,73 @@ _set_bkg_submap_attributes_verticalStripes_columnLoop:
 .db 0b00100000
 .db 0b01000000
 .db 0b10000000
+
+.ifne GBDK_NES_8X8_ATTRIBUTES
+; 8x8 attributes implementation
+_set_bkg_submap_attributes::
+.set_bkg_submap_attributes::
+    ; x /= 2
+    lsr
+    pha
+    ; y /= 2
+    txa
+    lsr
+    tax
+    ; bits 7-6 -> bits 1-0
+    lda *_attribute_shadow_offset
+    rol
+    rol
+    rol
+    and #3
+    tay
+    lda _attribute_row_dirty_planes,y
+    sta *_attribute_row_dirty
+    lda _attribute_column_dirty_planes,y
+    sta *_attribute_column_dirty
+    sty *REGTEMP+3
+    ; w = (w+1)/2
+    inc *.PARM_w
+    lsr *.PARM_w
+    ; h = (h+1)/2
+    inc *.PARM_h
+    lsr *.PARM_h
+    ; map_w = (map_w+1)/2
+    lda *.PARM_map_w
+    clc
+    adc #1
+    ror
+    sta *.PARM_map_w
+    pla
+    jsr _set_bkg_submap_attributes_nes16x16
+    ldy *REGTEMP+3
+    lda *_attribute_row_dirty
+    sta _attribute_row_dirty_planes,y
+    lda *_attribute_column_dirty
+    sta _attribute_column_dirty_planes,y
+    rts
+.else
+; Regular 16x16 attributes implementation
+_set_bkg_submap_attributes::
+.set_bkg_submap_attributes::
+    ; x /= 2
+    lsr
+    pha
+    ; y /= 2
+    txa
+    lsr
+    tax
+    ; w = (w+1)/2
+    inc *.PARM_w
+    lsr *.PARM_w
+    ; h = (h+1)/2
+    inc *.PARM_h
+    lsr *.PARM_h
+    ; map_w = (map_w+1)/2
+    lda *.PARM_map_w
+    clc
+    adc #1
+    ror
+    sta *.PARM_map_w
+    pla
+    jmp _set_bkg_submap_attributes_nes16x16
+.endif

@@ -3,10 +3,13 @@
 .include "global.s"
 
 .area GBDKOVR (PAG, OVR)
-_set_bkg_attribute_xy_nes16x16_PARM_3::    .ds 1
+_set_bkg_attribute_xy_PARM_3::
+_set_bkg_attribute_xy_nes16x16_PARM_3::     .ds 1
 .x_odd:                                     .ds 1
 .y_odd:                                     .ds 1
 .val:                                       .ds 1
+.x:                                         .ds 1
+.y:                                         .ds 1
 
 .area _HOME
 
@@ -23,6 +26,9 @@ _set_bkg_attribute_xy_nes16x16::
     asl
     and #0x38
     ora .identity,y
+.ifne GBDK_NES_8X8_ATTRIBUTES
+    ora *_attribute_shadow_offset
+.endif
     tay
     lda *_set_bkg_attribute_xy_nes16x16_PARM_3
     bit *.y_odd
@@ -72,3 +78,41 @@ _set_bkg_attribute_xy_nes16x16::
 .db 0b00100000
 .db 0b01000000
 .db 0b10000000
+
+.ifne GBDK_NES_8X8_ATTRIBUTES
+;
+; void set_bkg_attribute_xy(uint8_t x, uint8_t y, uint8_t a)
+;
+_set_bkg_attribute_xy::
+    sta *.x
+    stx *.y
+    lda #0
+    lsr *.x
+    ror
+    lsr *.y
+    ror
+    sta *_attribute_shadow_offset
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    pha
+    tay
+    ;
+    lda _attribute_row_dirty_planes,y
+    sta *_attribute_row_dirty
+    lda _attribute_column_dirty_planes,y
+    sta *_attribute_column_dirty
+    lda *.x
+    ldx *.y
+    jsr _set_bkg_attribute_xy_nes16x16
+    pla
+    tay
+    lda *_attribute_row_dirty
+    sta _attribute_row_dirty_planes,y
+    lda *_attribute_column_dirty
+    sta _attribute_column_dirty_planes,y
+    rts
+.endif
