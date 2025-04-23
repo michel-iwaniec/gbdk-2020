@@ -58,6 +58,7 @@
     lda #0
     sta *__hblank_writes_index
     sta *.lcd_buf_index
+    sta __lcd_isr_delay_num_scanlines+1
     ldx #.SCREENHEIGHT-1
     jmp .write_shadow_registers_to_buffer
 

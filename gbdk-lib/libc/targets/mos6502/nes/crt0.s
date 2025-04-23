@@ -326,9 +326,9 @@ __crt0_NMI_skip:
     clc
     adc #1
     sta *_sys_time
-    lda *(_sys_time+1)
-    adc #0
-    sta *(_sys_time+1)
+    bcc 9$
+    inc *(_sys_time+1)
+9$:
 
     pla
     tay
@@ -474,6 +474,7 @@ _vsync::
     ora #OAM_VALID_MASK
     sta *__oam_valid_display_on
 
+_wait_vbl_done_waitForNextFrame:
     lda *_sys_time
 _wait_vbl_done_waitForNextFrame_loop:
     cmp *_sys_time
@@ -488,22 +489,29 @@ _wait_vbl_done_waitForNextFrame_loop:
 
 .display_off::
 _display_off::
-    ; Clear PPUMASK immediately - but keep bits in _shadow_PPUMASK unchanged
-    lda _shadow_PPUMASK
+    ; Skip entirely if display_off is called repeatedly
+    bit *__oam_valid_display_on
+    bvs 1$
+    ; Reset deferred ISR buffers
+    jsr .deferred_isr_reset
+    ; Clear BG and SPR in first __lcd_isr_PPUMASK, to cause 
+    ; NMI code to clear PPUMASK *after* 1 normal execution
+    lda *_shadow_PPUMASK
     and #~(PPUMASK_SHOW_BG|PPUMASK_SHOW_SPR)
-    sta PPUMASK
+    sta __lcd_isr_PPUMASK
+    ; Wait for 1 execution of NMI to drain vram transfer buffer
+    jsr _wait_vbl_done_waitForNextFrame
     ; Set forced blanking bit
     lda *__oam_valid_display_on
     ora #DISPLAY_OFF_MASK
     sta *__oam_valid_display_on
+1$:
     rts
 
 .display_on::
 _display_on::
-
     ; Skip entirely if display_on is called repeatedly
     bit *__oam_valid_display_on
-    and #~DISPLAY_OFF_MASK
     bvc 1$
     ; Reset deferred ISR buffers
     jsr .deferred_isr_reset
