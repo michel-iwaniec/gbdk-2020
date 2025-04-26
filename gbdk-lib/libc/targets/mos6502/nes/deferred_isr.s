@@ -63,6 +63,14 @@
     jmp .write_shadow_registers_to_buffer
 
 ;
+; Resets the deferred ISR, then runs VBL and LCD handlers twice to initialize buffers with valid data.
+;
+.deferred_isr_reset_and_init::
+    jsr .deferred_isr_reset
+    jsr .deferred_isr_run
+    jmp .deferred_isr_run
+
+;
 ; Executes the deferred VBL/LCD handlers.
 ;
 ; After each ISR handler has run, PPU shadow registers are written to a buffer 

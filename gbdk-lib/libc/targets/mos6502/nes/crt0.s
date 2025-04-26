@@ -514,7 +514,7 @@ _display_on::
     bit *__oam_valid_display_on
     bvc 1$
     ; Reset deferred ISR buffers
-    jsr .deferred_isr_reset
+    jsr .deferred_isr_reset_and_init
     ; Set DISPLAY_ON bits
     lda *__oam_valid_display_on
     and #~DISPLAY_OFF_MASK
