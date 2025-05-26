@@ -1,7 +1,7 @@
         .include "platform_cfg.s"
 
         ;; Maximum number of times LCD ISR can be repeatedly called
-        .MAX_LCD_ISR_CALLS = 4
+        .MAX_LCD_ISR_CALLS = 0
         ;; Total number is +1 to support VBL ISR with the same logic
         .MAX_DEFERRED_ISR_CALLS = (.MAX_LCD_ISR_CALLS+1)
 
