@@ -16,8 +16,8 @@
 ; The same define should also be passed to LCC for compile-time settings in the C include files.
 ;
 
-NES_TILEMAP_S = 1
-;NES_TILEMAP_H = 1
+;NES_TILEMAP_S = 1
+NES_TILEMAP_H = 1
 ;NES_TILEMAP_V = 1
 ;NES_TILEMAP_F = 1
 
@@ -30,4 +30,4 @@ NES_TILEMAP_S = 1
 ; This setting is *only* valid when NES_TILEMAP_S = 1 (using it with other tilmap layouts will corrupt the stack)
 ;
 
-NES_LOMEM = 1
+;NES_LOMEM = 1
