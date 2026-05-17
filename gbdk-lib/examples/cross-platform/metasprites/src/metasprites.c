@@ -107,10 +107,10 @@ uint8_t get_tile_offset(uint8_t flipx, uint8_t flipy)
 {
     flipx; flipy; // suppress compiler warnings
     uint8_t offset = 0;
-#if !HARDWARE_SPRITE_CAN_FLIP_Y
+#if !OAMF_YFLIP
     offset += flipy ? num_tiles : 0;
 #endif
-#if !HARDWARE_SPRITE_CAN_FLIP_X
+#if !OAMF_XFLIP
     offset <<= 1;
     offset += flipx ? num_tiles : 0;
 #endif
@@ -127,13 +127,13 @@ void load_and_duplicate_sprite_tile_data(void)
     for(i = 0; i < num_tiles; i++)
     {
         set_tile(i + get_tile_offset(0, 0), sprite_tiles + (i << 4), 0, 0);
-#if !HARDWARE_SPRITE_CAN_FLIP_X
+#if !OAMF_XFLIP
         set_tile(i + get_tile_offset(1, 0), sprite_tiles + (i << 4), 1, 0);
 #endif
-#if !HARDWARE_SPRITE_CAN_FLIP_Y
+#if !OAMF_YFLIP
         set_tile(i + get_tile_offset(0, 1), sprite_tiles + (i << 4), 0, 1);
 #endif
-#if !HARDWARE_SPRITE_CAN_FLIP_X && !HARDWARE_SPRITE_CAN_FLIP_Y
+#if !OAMF_XFLIP && !OAMF_YFLIP
         set_tile(i + get_tile_offset(1, 1), sprite_tiles + (i << 4), 1, 1);
 #endif
     }

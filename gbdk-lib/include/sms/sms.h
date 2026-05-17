@@ -776,14 +776,6 @@ extern volatile uint8_t _sprites_OFF;
 */
 #define MAX_HARDWARE_SPRITES 64
 
-/** True if sprite hardware can flip sprites by X (horizontally)
-*/
-#define HARDWARE_SPRITE_CAN_FLIP_X 0
-
-/** True if sprite hardware can flip sprites by Y (vertically)
-*/
-#define HARDWARE_SPRITE_CAN_FLIP_Y 0
-
 /** Sets address of 256-byte aligned array of shadow OAM to be transferred on each VBlank
 */
 inline void SET_SHADOW_OAM_ADDRESS(void * address) {
@@ -922,5 +914,12 @@ inline uint8_t * set_attribute_xy(uint8_t x, uint8_t y, uint8_t a) Z88DK_CALLEE 
  */
 uint8_t * get_bkg_xy_addr(uint8_t x, uint8_t y) PRESERVES_REGS(iyh, iyl);
 #define get_win_xy_addr get_bkg_xy_addr
+
+/** Checks whether background attributes are enabled
+
+    In a GBC build, this will depend on whether the ROM is running on the
+	a DMG or GBC. For other builds this will typically return a constant.
+*/
+inline uint8_t bkg_attributes_enabled() { return 1; }
 
 #endif /* _SMS_H */
