@@ -286,7 +286,6 @@ gbdk-lib-install-platforms:
 		done \
 	done
 	if [ -d "$(GBDKLIBDIR)/build/nes-m30-s-lomem" ]; then \
-		# copy build/nes-m30-s-lomem/global.s + platform_cfg.s to build/nes, to allow "nes" to default to it for backwards-compatibility \
 		cp $(GBDKLIBDIR)/libc/targets/mos6502/global.s $(BUILDDIR)/lib/nes/; \
 		cp $(GBDKLIBDIR)/libc/targets/mos6502/nes-m30-s-lomem/platform_cfg.s $(BUILDDIR)/lib/nes/; \
 	fi
